@@ -1,0 +1,29 @@
+{
+  "max_tokens": 256,
+  "max_width": 16,
+  "feature_rows": 2352,
+  "feature_version": 1,
+  "num_labels": 6,
+  "labels": [
+    "O",
+    "Q_B",
+    "Q_I",
+    "OPT_B",
+    "OPT_I",
+    "REC"
+  ],
+  "hidden": 128,
+  "layers": 3,
+  "static_size": 20000,
+  "static_dim": 32,
+  "static_offset": 16777216,
+  "kind_head": false,
+  "members": [
+    "final.pt",
+    "final.pt"
+  ],
+  "onnx": [
+    "member0.onnx",
+    "member1.onnx"
+  ]
+}

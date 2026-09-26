@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>gpu-ask.js — agent questions in the browser</title>
+    <meta
+      name="description"
+      content="Tiny on-device tagger: agent prose in, structured ask-tool choices out. ONNX + CRF in the browser, nothing sent anywhere."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⁇</text></svg>"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header class="hero">
+      <h1>gpu-ask.js</h1>
+      <p class="tagline">
+        Agent questions in the browser. Prose in, structured choices out — on-device, nothing sent anywhere.
+      </p>
+      <p class="sub">
+        A ~570k-parameter token tagger (gpu-time lineage) marks the question and options, then a deterministic compiler
+        builds an ask-tool payload your UI can render. Emissions run as ONNX; features, CRF, and compile stay in TypeScript.
+      </p>
+      <nav>
+        <a href="#demo">Demo</a>
+        <a href="#install">Install</a>
+        <a href="#schema">Schema</a>
+        <a href="#numbers">Numbers</a>
+        <a href="#how">How it works</a>
+        <a href="https://github.com/ai-ecoverse/gpu-ask.js">GitHub</a>
+        <a href="https://huggingface.co/ai-ecoverse/gpu-ask.js">Weights</a>
+        <a href="https://ai-ecoverse.github.io/kev.js/">kev.js</a>
+        <a href="https://ai-ecoverse.github.io/cua-s1.js/">cua-s1.js</a>
+        <a href="https://www.sliccy.com">SLICC</a>
+      </nav>
+    </header>
+
+    <section id="demo">
+      <h2>Try it</h2>
+      <p class="note">
+        The model is a few megabytes and loads with the page. Pick a real agent turn — highlights mark the question and
+        options; the panel on the right is what a reply UI would show.
+      </p>
+
+      <div class="toolbar">
+        <label>
+          Preset
+          <select id="preset"></select>
+        </label>
+        <span class="spacer"></span>
+        <p id="status" class="status">Loading model…</p>
+        <button type="button" id="parse" class="primary" disabled title="⌘↵">Parse</button>
+        <button type="button" id="edit" class="ghost">Edit</button>
+      </div>
+
+      <div class="stage">
+        <section class="panel">
+          <div id="message" class="message" aria-live="polite"></div>
+          <textarea id="editor" class="editor" hidden spellcheck="false" placeholder="Paste an agent message…"></textarea>
+          <div class="legend" aria-hidden="true">
+            <span><i data-role="Q"></i> question</span>
+            <span><i data-role="OPT"></i> option</span>
+            <span><i data-role="REC"></i> recommended</span>
+          </div>
+        </section>
+        <section class="panel result-panel">
+          <div id="cards" class="cards">
+            <p class="empty">Compiled choices appear here.</p>
+          </div>
+          <details class="raw">
+            <summary>Response JSON</summary>
+            <pre id="json"></pre>
+          </details>
+        </section>
+      </div>
+    </section>
+
+    <section id="install">
+      <h2>Install</h2>
+      <pre><code>npm install @ai-ecoverse/gpu-ask.js onnxruntime-web</code></pre>
+      <p class="note">
+        Weights (~10&nbsp;MB) ship inside the package under <code>models/v13/</code>, and also on
+        <a href="https://huggingface.co/ai-ecoverse/gpu-ask.js">Hugging Face</a>. Point
+        <code>loadAsk</code> at either.
+      </p>
+      <pre><code>import { bundledModelUrl, loadAsk, parse } from "@ai-ecoverse/gpu-ask.js";
+import * as ort from "onnxruntime-web/wasm";
+
+const ask = await loadAsk(bundledModelUrl(), { ort });
+// or: loadAsk("https://huggingface.co/ai-ecoverse/gpu-ask.js/resolve/main/v13", { ort })
+const { questions } = await parse(ask, agentMessage);
+// questions[0].kind      → "either_or"
+// questions[0].options   → ["merge it now", "wait for CI"]
+// questions[0].propose   → true</code></pre>
+    </section>
+
+    <section id="schema">
+      <h2>Schema</h2>
+      <p>
+        One message can yield zero or more questions. Kind comes from the compiler (option count + open/yes-no
+        heuristics). Spans are character offsets in the cleaned text.
+      </p>
+      <table class="api">
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Meaning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>kind</code></td>
+            <td><code>yes_no | either_or | multi_choice | open</code></td>
+            <td>How the UI should ask</td>
+          </tr>
+          <tr>
+            <td><code>propose</code></td>
+            <td><code>boolean</code></td>
+            <td>Assistant offers to act (want me to / should I…)</td>
+          </tr>
+          <tr>
+            <td><code>prompt</code></td>
+            <td><code>string</code></td>
+            <td>Question span text</td>
+          </tr>
+          <tr>
+            <td><code>options</code></td>
+            <td><code>string[]</code></td>
+            <td>Tagged choices; empty for yes/no and open</td>
+          </tr>
+          <tr>
+            <td><code>default</code></td>
+            <td><code>number | null</code></td>
+            <td>Index of a recommended option, if tagged</td>
+          </tr>
+          <tr>
+            <td><code>multiSelect</code></td>
+            <td><code>boolean</code></td>
+            <td>Allow several options</td>
+          </tr>
+          <tr>
+            <td><code>span</code></td>
+            <td><code>[start, end]</code></td>
+            <td>Character range of the question</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="numbers">
+      <h2>Numbers</h2>
+      <table class="api">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Params</th>
+            <th>False q</th>
+            <th>Kind</th>
+            <th>options_ok</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>v12 ensemble (32m distill)</td>
+            <td>537k × 2</td>
+            <td>4.0%</td>
+            <td>83.7%</td>
+            <td>65.4%</td>
+          </tr>
+          <tr>
+            <td>v13 + constrained kind rerank</td>
+            <td>571k × 2</td>
+            <td>3.7%</td>
+            <td>85.4%</td>
+            <td>67.5%</td>
+          </tr>
+          <tr>
+            <td>Ettin-150m teacher (ceiling)</td>
+            <td>150M</td>
+            <td>2.4%</td>
+            <td>87.8%</td>
+            <td>74.5%</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="note">
+        Pooled out-of-fold on 4,930 hand-labeled public agent turns. The browser demo ships the v13 emission ensemble
+        with compiler kind (no Python-only rerank). Target false-question rate is below 5%.
+      </p>
+    </section>
+
+    <section id="how">
+      <h2>How it works</h2>
+      <p>
+        Sparse hashed features (no vocabulary) feed a bidirectional affine-scan tagger. A linear-chain CRF picks token
+        roles (<code>O</code>, <code>Q_*</code>, <code>OPT_*</code>, <code>REC</code>). Deterministic code turns those
+        roles into questions — recovering missing either/or sides, splitting inline lists, and deciding kind.
+      </p>
+      <p>
+        For the browser, only the emission network is ONNX (WASM via onnxruntime-web). Tokenization, features,
+        Viterbi, and the compiler run in TypeScript in a Web Worker. ORT loads its SIMD WASM from Vite-bundled
+        <code>wasmPaths</code> (same pattern as kev.js and cua-s1.js). The architecture follows
+        <a href="https://gpu-time.arikko.dev">gpu-time</a>; the task is agent ask-tool structure, not time tagging.
+      </p>
+    </section>
+
+    <footer>
+      <h2>Part of AI Ecoverse</h2>
+      <p>
+        gpu-ask.js is an <a href="https://github.com/ai-ecoverse">AI Ecoverse</a> project — the world's trailing AI lab,
+        made with ♥ in Berlin. Siblings include
+        <a href="https://ai-ecoverse.github.io/kev.js/">kev.js</a> (decision models on WebGPU),
+        <a href="https://ai-ecoverse.github.io/cua-s1.js/">cua-s1.js</a> (form filling on-device), and
+        <a href="https://www.sliccy.com">SLICC</a> (a coding agent in your browser).
+      </p>
+      <p class="muted">
+        Training code lives in
+        <a href="https://github.com/ai-ecoverse/gpu-questions">gpu-questions</a>. Apache-2.0.
+      </p>
+    </footer>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

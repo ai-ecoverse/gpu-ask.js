@@ -1,0 +1,27 @@
+{
+  "name": "gpu-ask-v13",
+  "revision": "v13-all",
+  "description": "Two-seed ensemble (v13-all-a/b), Ettin-150m distill, kind head, static potion-32",
+  "files": {
+    "config.json": {
+      "sha256": "95cbc8965e5e26e20de95d850fe5035ea3ac3673da411f6762377aac470614a0",
+      "bytes": 430
+    },
+    "crf.json": {
+      "sha256": "67269b1bf0cedafa030c0ed1c9e8aa44fc0816c648722e8265740f1115f14869",
+      "bytes": 922
+    },
+    "member0.onnx": {
+      "sha256": "de22abdd921a19b9e036a89020ae2e788a67d0cdbc51c153e61d11091ac74e11",
+      "bytes": 4918713
+    },
+    "member1.onnx": {
+      "sha256": "4b449c8f8321a007fa6955aac26c45a14c163a20ca5fc0d76233fe402e0c0079",
+      "bytes": 4918713
+    },
+    "static_vocab.json": {
+      "sha256": "1e2be30755dcd4cca4a9498341a0c9fa4bce4e2aec85b0ffcb4b4a3d0c0ca707",
+      "bytes": 224766
+    }
+  }
+}
