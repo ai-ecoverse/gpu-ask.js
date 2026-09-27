@@ -253,4 +253,8 @@ editorEl.addEventListener("keydown", (e) => {
 
 document.body.classList.add("busy");
 statusEl.textContent = "Loading ONNX model…";
-send({ type: "load", baseUrl: `${location.origin}/model` });
+// Respect Vite `base` (e.g. /gpu-ask.js/ on GitHub Pages).
+send({
+  type: "load",
+  baseUrl: new URL(`${import.meta.env.BASE_URL}model/`, location.href).href,
+});
